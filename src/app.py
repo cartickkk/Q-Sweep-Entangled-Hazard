@@ -1,5 +1,5 @@
 """
-app.py - High-Impact Interactive Edition for Q-Sweep: Entangled Hazard
+app.py - High-Impact Interactive Edition with Quantum Gate Interventions
 Track 1: Quantum Games & Interactive Puzzles | Team DOPA (Kartik Jain)
 """
 import io
@@ -204,6 +204,18 @@ def play_sound_fx(fx: str):
             g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.4);
             o.connect(g); g.connect(ac.destination);
             o.start(); o.stop(ac.currentTime + 0.4);
+        """,
+        "powerup": """
+            const ac = new (window.AudioContext || window.webkitAudioContext)();
+            const o = ac.createOscillator();
+            const g = ac.createGain();
+            o.type = 'square';
+            o.frequency.setValueAtTime(330, ac.currentTime);
+            o.frequency.exponentialRampToValueAtTime(659.25, ac.currentTime + 0.15);
+            g.gain.setValueAtTime(0.08, ac.currentTime);
+            g.gain.exponentialRampToValueAtTime(0.001, ac.currentTime + 0.18);
+            o.connect(g); g.connect(ac.destination);
+            o.start(); o.stop(ac.currentTime + 0.18);
         """
     }
     if fx in sounds:
@@ -227,6 +239,9 @@ def reset_game():
     st.session_state.score = 0
     st.session_state.last_circuit = None
     st.session_state.sound_to_play = None
+    st.session_state.h_shields = 2
+    st.session_state.x_inverters = 1
+    st.session_state.active_tool = "Normal Probe"
     st.session_state.log = ["Register initialized in ground state |000000000⟩."]
 
 if "revealed" not in st.session_state:
@@ -237,13 +252,38 @@ if st.session_state.sound_to_play:
     st.session_state.sound_to_play = None
 
 # ---------------------------------------------------------
-# Sidebar: Setup & Rules
+# Sidebar: Setup, Gate Power-Ups & Rules
 # ---------------------------------------------------------
 with st.sidebar:
     st.markdown("### 🎛 QUANTUM CONTROL")
     if st.button("↻ Restart Quantum Experiment", use_container_width=True):
         reset_game()
         st.rerun()
+
+    st.markdown("---")
+    st.markdown("### ⚡ GATE POWER-UPS")
+    st.caption("Apply a unitary gate before measuring to manipulate state probabilities:")
+
+    tool_choice = st.radio(
+        "Active Mode:",
+        [
+            "Normal Probe",
+            f"H-Shield (x{st.session_state.h_shields})",
+            f"X-Inverter (x{st.session_state.x_inverters})"
+        ],
+        index=0
+    )
+
+    if "H-Shield" in tool_choice:
+        st.session_state.active_tool = "H" if st.session_state.h_shields > 0 else "Normal Probe"
+    elif "X-Inverter" in tool_choice:
+        st.session_state.active_tool = "X" if st.session_state.x_inverters > 0 else "Normal Probe"
+    else:
+        st.session_state.active_tool = "Normal Probe"
+
+    with st.expander("📖 Intervention Manual", expanded=False):
+        st.write("**Hadamard ($H$) Shield:** Rotates the statevector through quantum interference, drastically reducing mine probability.")
+        st.write("**Pauli-X ($X$) Inverter:** Flips $|0\\rangle \\leftrightarrow |1\\rangle$, reversing the outcome if you suspect a mine.")
 
     st.markdown("---")
     st.markdown("### 🧬 PHYSICS FORMALISM")
@@ -274,14 +314,17 @@ st.markdown("""
 """, unsafe_allow_html=True)
 st.caption("A quantum minefield where hazards do not exist until forced into reality through quantum measurement.")
 
-# Dynamic 3-Column Metrics Ribbon
-m1, m2, m3 = st.columns(3)
+# Dynamic 4-Column Metrics Ribbon
+m1, m2, m3, m4 = st.columns(4)
 with m1:
     st.metric(label="Player Score", value=st.session_state.score)
 with m2:
     cleared_count = sum(st.session_state.revealed)
     st.metric(label="Tiles Observed", value=f"{cleared_count} / {TOTAL_TILES}")
 with m3:
+    gate_display = f"Gate: {st.session_state.active_tool}" if st.session_state.active_tool != "Normal Probe" else "Probe Mode"
+    st.metric(label="Active Action", value=gate_display)
+with m4:
     status_text = "💥 DETONATED" if st.session_state.game_over else ("🏆 STABILIZED" if st.session_state.game_won else "✨ COHERENT")
     st.metric(label="System State", value=status_text)
 
@@ -295,6 +338,7 @@ def handle_tile_action(idx: int):
         return
 
     engine = st.session_state.engine
+    tool = st.session_state.active_tool
 
     if idx in ENTANGLED_MAP:
         twin = ENTANGLED_MAP[idx]
@@ -315,20 +359,31 @@ def handle_tile_action(idx: int):
             st.session_state.sound_to_play = "entangle"
             st.session_state.log.append(f"Bell pair ({idx}, {twin}) collapsed -> |00⟩ (SAFE)")
     else:
-        is_mine, qc = engine.probe_superposition_tile(mine_prob=0.30)
+        # Determine gate to apply and consume charge
+        gate_to_apply = tool if tool in ["H", "X"] else None
+        if gate_to_apply == "H" and st.session_state.h_shields > 0:
+            st.session_state.h_shields -= 1
+        elif gate_to_apply == "X" and st.session_state.x_inverters > 0:
+            st.session_state.x_inverters -= 1
+        else:
+            gate_to_apply = None
+
+        is_mine, qc = engine.probe_superposition_tile(mine_prob=0.30, intervention_gate=gate_to_apply)
         st.session_state.revealed[idx] = True
         st.session_state.last_circuit = qc
+
+        tool_msg = f" with [{gate_to_apply}] intervention" if gate_to_apply else ""
 
         if is_mine == 1:
             st.session_state.board_state[idx] = "💥 MINE"
             st.session_state.game_over = True
             st.session_state.sound_to_play = "mine"
-            st.session_state.log.append(f"Tile {idx} collapsed -> |1⟩ (DETONATION)")
+            st.session_state.log.append(f"Tile {idx} measured{tool_msg} -> |1⟩ (DETONATION)")
         else:
             st.session_state.board_state[idx] = "🟢 SAFE"
             st.session_state.score += 1
-            st.session_state.sound_to_play = "safe"
-            st.session_state.log.append(f"Tile {idx} collapsed -> |0⟩ (SAFE)")
+            st.session_state.sound_to_play = "powerup" if gate_to_apply else "safe"
+            st.session_state.log.append(f"Tile {idx} measured{tool_msg} -> |0⟩ (SAFE)")
 
     if not st.session_state.game_over and all(st.session_state.revealed):
         st.session_state.game_won = True

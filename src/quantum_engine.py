@@ -1,7 +1,7 @@
 """
 quantum_engine.py
 Core quantum backend for Q-Sweep: Entangled Hazard using Qiskit AerSimulator.
-Handles Bell-state generation and single-qubit superposition measurements.
+Handles Bell-state generation, superposition, and gate interventions (H, X).
 """
 import numpy as np
 from qiskit import QuantumCircuit
@@ -31,14 +31,22 @@ class QuantumSweeperEngine:
         mine_b = int(bitstring[0])
         return mine_a, mine_b, qc
 
-    def probe_superposition_tile(self, mine_prob: float = 0.30) -> tuple[int, QuantumCircuit]:
+    def probe_superposition_tile(self, mine_prob: float = 0.30, intervention_gate: str | None = None) -> tuple[int, QuantumCircuit]:
         """
         Puts an unentangled tile into superposition via Ry rotation.
+        Optionally applies an intervention gate (H or X) before measurement.
         Measurement collapses the tile into Safe (0) or Mine (1).
         """
         qc = QuantumCircuit(1, 1)
         theta = 2 * np.arcsin(np.sqrt(mine_prob))
         qc.ry(theta, 0)
+
+        # Apply player intervention gate if selected
+        if intervention_gate == "H":
+            qc.h(0)
+        elif intervention_gate == "X":
+            qc.x(0)
+
         qc.measure(0, 0)
 
         job = self.simulator.run(qc, shots=1)
