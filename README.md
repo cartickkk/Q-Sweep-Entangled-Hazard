@@ -1,48 +1,61 @@
-# Q-Sweep: Entangled Hazard
+# ⚛️ Q-Sweep: Entangled Hazard
 
-## Project Metadata
-- **Track:** Track 1: Quantum Games & Interactive Puzzles
-- **Team Name:** DOPA
-- **Team Members:** Kartik Jain (kartik.jain.cs24@gmail.com)
-- **Target Audience:** Students, quantum enthusiasts, and gamers exploring superposition and quantum entanglement fundamentals.
-
----
-
-## 1. Project Overview & Motivation
-
-- **Summary (3–4 sentences):**
-  Q-Sweep: Entangled Hazard is an interactive quantum puzzle game that reinvents the classic minefield sweeper through genuine Qiskit circuit dynamics. Instead of relying on a static, pre-computed minefield, hazard states are indeterminate prior to observation and collapse in real time via quantum measurement. The game models non-local correlations using Bell states, causing entangled tile pairs across the grid to instantaneously collapse into identical states upon interaction.
-
-- **Why this problem / game?**
-  Classical puzzle games cannot intuitively represent wave function collapse or non-local correlations. Q-Sweep provides a hands-on, visually transparent playground where the act of measurement actively creates game outcomes. By displaying live quantum circuit execution telemetry alongside board updates, players build practical mental models of superposition ($R_y$) and Einstein-Podolsky-Rosen (EPR) pairs ($\vert{}\Phi^+\rangle$).
+> **Track 1: Quantum Games & Interactive Puzzles**  
+> **Qiskit Fall Fest 2026 — IIIT Kottayam**  
+> **Team:** DOPA (Solo Developer: Kartik Jain)  
+> **Tech Stack:** Python 3.10+, Qiskit 1.0+, Qiskit Aer (`AerSimulator`), Streamlit, Matplotlib
 
 ---
 
-## 2. Quantum Architecture & Mechanics
+## 📌 Executive Summary
 
-- **Core Quantum Principles Used:**
-  Parameterized Superposition ($R_y$ rotation gates), Bell-State Entanglement ($\vert{}\Phi^+\rangle$ via $H$ and $CX$ gates), and Wavefunction Measurement Collapse.
+**Q-Sweep: Entangled Hazard** reinterprets the classic game of Minesweeper through fundamental quantum mechanics. 
 
-- **How the Quantum Circuit is Integrated:**
-  Every player click triggers an event loop in `src/quantum_engine.py`. For unentangled tiles, a single-qubit parameterized rotation is applied and sampled via `AerSimulator` to determine whether the collapsed state is Safe ($\vert{}0\rangle$) or Mine ($\vert{}1\rangle$). When an entangled coordinate is chosen, a two-qubit Bell circuit is simulated with single-shot measurement; both paired grid coordinates update simultaneously based on the correlated bitstring outcome (`00` or `11`).
+In classical Minesweeper, hazards are pre-placed into static memory arrays before gameplay begins. In **Q-Sweep**, hazards do not physically exist until an observation occurs. Each unrevealed tile exists in a true quantum superposition $\vert{}\psi\rangle$ or an entangled Bell pair $\vert{}\Phi^+\rangle$. Clicking a tile compiles and executes an individual quantum circuit on Qiskit's `AerSimulator`, forcing wavefunction collapse in real time.
 
-- **Circuit Details:**
-  - **Number of Qubits:** 1 qubit for standard cells; 2 qubits for entangled pair cells.
-  - **Key Gates Used:** $H$ (Hadamard), $CX$ (Controlled-NOT), $R_y(\theta)$ (Single-axis rotation), and Measurement operators.
-  - **Primitives Used:** Qiskit Aer (`AerSimulator`).
-  - **Other Technologies Used:** Streamlit (UI frontend), Matplotlib & Pylatexenc (circuit diagram visualization), NumPy (probabilistic parameter calculation).
+---
 
-```python
-# Representative snippet of core Qiskit circuit execution
-from qiskit import QuantumCircuit
-from qiskit_aer import AerSimulator
+## 🔬 Core Quantum Mechanics Implemented
 
-def generate_bell_pair():
-    qc = QuantumCircuit(2, 2)
-    qc.h(0)
-    qc.cx(0, 1)
-    qc.measure([0, 1], [0, 1])
-    sim = AerSimulator()
-    result = sim.run(qc, shots=1).result().get_counts()
-    bitstring = list(result.keys())[0]
-    return int(bitstring[1]), int(bitstring[0]), qc
+### 1. Parameterized Superposition ($R_y$ Rotation)
+Standard grid coordinates exist in an unobserved superposition prepared via single-qubit rotation:
+$$\vert{}\psi\rangle = R_y(\theta)\vert{}0\rangle = \cos\left(\frac{\theta}{2}\right)\vert{}0\rangle + \sin\left(\frac{\theta}{2}\right)\vert{}1\rangle$$
+* State $\vert{}0\rangle \rightarrow$ **Safe**
+* State $\vert{}1\rangle \rightarrow$ **Detonated Mine**
+* Rotation parameter: $\theta = 2 \arcsin(\sqrt{P_{\text{mine}}})$ (configured at $P = 0.30$).
+* Clicking the tile triggers a projective $Z$-basis measurement, collapsing the amplitude into a deterministic macroscopic outcome.
+
+### 2. Non-Local Entanglement (Bell State $\vert{}\Phi^+\rangle$)
+Tiles **(0, 1)** and **(4, 5)** are pairwise entangled:
+$$\vert{}\Phi^+\rangle = \frac{1}{\sqrt{2}}(\vert{}00\rangle + \vert{}11\rangle)$$
+* Generated via a Hadamard gate on qubit 0 followed by a CNOT gate across $(q_0, q_1)$.
+* Measuring either tile instantaneously forces its partner to collapse into the exact identical state across the grid, demonstrating Einstein-Podolsky-Rosen (EPR) correlation.
+
+### 3. Unitary Gate Interventions (Tactical Power-Ups)
+Players can manipulate probability amplitudes prior to projective measurement:
+* **Hadamard Shield ($H$-Gate):** Induces quantum interference across the basis states, drastically skewing probability amplitudes toward $\vert{}0\rangle$ (Safe), lowering mine probability from $30\%$ to $\sim 2.7\%$.
+* **Pauli-X Inverter ($X$-Gate):** Bit-flip operation ($\vert{}0\rangle \leftrightarrow \vert{}1\rangle$), inverting outcome probabilities if a player suspects high hazard density.
+
+---
+
+## 🚀 Key Features & UI Architecture
+
+* **Genuine Quantum Execution:** Zero pseudo-random generators (`random.randint` is strictly avoided). Every tile click synthesizes a `QuantumCircuit` executed on `AerSimulator(shots=1)`.
+* **Live Circuit Telemetry:** Dynamically draws the generated Qiskit circuit diagram with Matplotlib, showing gate operations and measurement barriers in real time.
+* **Circuit Export:** Judges and players can download single-shot PNG diagrams of synthesized circuits directly from the UI.
+* **Responsive Dark Aurora Interface:** Built with Streamlit, custom CSS, 3D hover feedback, and real-time state telemetry.
+* **Zero-Dependency Web Audio Synthesis:** Built-in audio cues using the browser Web Audio API for safe clears, entanglement sweeps, and detonation rumbles.
+
+---
+
+## 📁 Repository Structure
+
+```text
+Q-Sweep-Entangled-Hazard/
+├── src/
+│   ├── app.py                # Streamlit UI, Web Audio API, Telemetry dashboard
+│   └── quantum_engine.py     # Qiskit circuit synthesis, AerSimulator execution
+├── requirements.txt          # Python dependencies
+├── q_sweep_presentation.html # Hackathon pitch deck (7-slide presentation)
+├── README.md                 # Complete project documentation
+└── LICENSE                   # MIT License
